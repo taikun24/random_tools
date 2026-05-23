@@ -246,7 +246,7 @@
 
 <body>
     <header>
-        <h1>Minecraft 逆翻訳ツール</h1>
+        <h1>Minecraft 逆翻訳(+α)ツール</h1>
     </header>
 
     <main>
@@ -268,7 +268,7 @@
 
         <div class="section">
             <h2>3. 翻訳ルートの設定</h2>
-            <p>経由する言語を選択して追加してください。最後に自動的に日本語に戻ります。</p>
+            <p>経由する言語を選択して追加してください。最後に選択した終了言語に戻ります。</p>
             <div class="controls">
                 <select id="language-select">
                     <option value="" disabled selected>言語を選択...</option>
@@ -277,12 +277,12 @@
             </div>
 
             <div id="language-flow">
-                <div class="lang-badge">日本語 (ja)</div>
+                <select id="start-lang-select"></select>
                 <!-- 追加された言語がここに入ります -->
                 <div class="arrow" id="final-arrow">→</div>
-                <div class="lang-badge" id="final-lang">日本語 (ja)</div>
+                <select id="end-lang-select"></select>
             </div>
-            <p class="note">※ 言語を追加すると、日本語 → 選択言語1 → 選択言語2 ... → 日本語 の順に翻訳されます。</p>
+            <p class="note">※ 言語を追加すると、開始言語 → 選択言語1 → 選択言語2 ... → 終了言語 の順に翻訳されます。</p>
         </div>
 
         <div class="section">
@@ -292,14 +292,18 @@
                 <input type="range" id="api-limit-range" min="1" max="500" value="100">
                 <label for="api-limit-range">API一括処理数 (現在: <span id="api-limit-value">100</span>)</label>
                 <p class="note">※ APIの制限により、一度に大量のテキストを翻訳しようとすると失敗する場合があります。値を小さくすると安定しますが、処理時間が長くなります。</p>
-                <input type="range" id="api-delay-range" min="0" max="2000" value="100">
-                <label for="api-delay-range">API呼び出し間の待機時間 (ms) (現在: <span id="api-delay-value">100</span>)</label>
+                <input type="range" id="api-delay-range" min="0" max="2000" value="20">
+                <label for="api-delay-range">API呼び出し間の待機時間 (ms) (現在: <span id="api-delay-value">20</span>)</label>
                 <p class="note">※ API呼び出し間に待機時間を入れることで、連続リクエストによる制限を回避できます。値を大きくすると安定しますが、処理時間が長くなります。</p>
             </details>
             <p>
                 翻訳APIを選択してください。<br>
-		MyMeomry: 無料・制限あり<br>
+                MyMeomry: 無料・制限あり<br>
                 Chrome翻訳API: Chromeのみ・翻訳数無制限（ただし対応言語が限られます）<br>
+                <b>MyMemoryは制限が厳しいため、Chrome翻訳APIをおすすめします！！
+                    <br> Chromeのflagをいじる必要があります。参考: <a href="https://qiita.com/degudegu2510/items/a4612847e1ae2bff4a62"
+                        target="_blank">Qiita: Chrome の組み込みAI「Translator API」を使ってみた</a>
+                </b>
             </p>
             <select id="translation-api-select">
                 <option value="mymemory" selected>MyMemory 翻訳API</option>
@@ -328,6 +332,12 @@
                 4. 新しく追加されたリソースパックの右三角ボタン（▶）をクリックして有効化します。<br>
                 5. 「完了」をクリックします。<br>
                 6. 完了！ ワールドを開いて翻訳が反映されているか確認してください。
+            </p>
+        </div>
+        <div class="section">
+            <h2>6. その他</h2>
+            <p>
+                このツールはもともと逆翻訳用に作りましたが普通に翻訳ツールとしても使えます。（精度は微妙）
             </p>
         </div>
     </main>
@@ -366,7 +376,7 @@
         let jsonResult = null;
         let selectedLangCodes = [];
         let API_LIMIT = 100; // チャンクサイズを少し減らして安全に
-        let API_DELAY = 100; // API呼び出し間の待機時間(ms)
+        let API_DELAY = 20; // API呼び出し間の待機時間(ms)
 
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
@@ -375,7 +385,8 @@
         const addLanguageButton = document.getElementById('add-language-button');
         const languageFlow = document.getElementById('language-flow');
         const finalArrow = document.getElementById('final-arrow');
-        const finalLang = document.getElementById('final-lang');
+        const startLangSelect = document.getElementById('start-lang-select');
+        const endLangSelect = document.getElementById('end-lang-select');
         const doTranslateButton = document.getElementById('do-translate-button');
         const progressBar = document.getElementById('progress-bar');
         const progressStatus = document.getElementById('progress-status');
@@ -408,12 +419,18 @@
 
         // 言語セレクトボックスの初期化
         window.languages.forEach(([name, code]) => {
-            if (code === 'ja') return; // 日本語は除外（始点と終点なので）
             const option = document.createElement('option');
             option.value = code;
             option.textContent = `${name} (${code})`;
-            languageSelect.appendChild(option);
+            // 中間選択肢に追加
+            languageSelect.appendChild(option.cloneNode(true));
+            // 開始/終了セレクトにも追加
+            startLangSelect.appendChild(option.cloneNode(true));
+            endLangSelect.appendChild(option.cloneNode(true));
         });
+        // デフォルトは日本語
+        startLangSelect.value = 'ja';
+        endLangSelect.value = 'ja';
 
         // ファイル読み込み処理
         function handleFile(file) {
@@ -494,8 +511,15 @@
         };
 
         function checkReady() {
-            doTranslateButton.disabled = !(jsonResult && selectedLangCodes.length > 0);
+            const startSelected = startLangSelect && startLangSelect.value;
+            const endSelected = endLangSelect && endLangSelect.value;
+            // 中間言語は必須ではない（空でもOK）
+            doTranslateButton.disabled = !(jsonResult && startSelected && endSelected);
         }
+
+        // 始点/終点セレクトの変更でUIを再検査
+        startLangSelect.addEventListener('change', () => checkReady());
+        endLangSelect.addEventListener('change', () => checkReady());
         async function callAPI(texts, fromLang, toLang) {
             const apiType = document.getElementById('translation-api-select').value;
             if (apiType === 'mymemory') {
@@ -603,7 +627,7 @@
         }
         // 翻訳実行
         doTranslateButton.addEventListener('click', async () => {
-            if (!jsonResult || selectedLangCodes.length === 0) return;
+            if (!jsonResult || !(startLangSelect.value && endLangSelect.value)) return;
 
             // Chrome翻訳APIの場合の特別フロー
             if (document.getElementById('translation-api-select').value === 'chrome-translate-api') {
@@ -621,7 +645,7 @@
             progressContainer.style.display = 'block';
             resultArea.style.display = 'none';
 
-            const flow = ['ja', ...selectedLangCodes, 'ja'];
+            const flow = [startLangSelect.value, ...selectedLangCodes, endLangSelect.value];
             const totalSteps = flow.length - 1;
             let allReady = true;
 
@@ -729,8 +753,8 @@
             progressContainer.style.display = 'block';
             resultArea.style.display = 'none';
 
-            // 翻訳フロー: ja -> lang1 -> lang2 ... -> ja
-            const flow = ['ja', ...selectedLangCodes, 'ja'];
+            // 翻訳フロー: start -> lang1 -> lang2 ... -> end
+            const flow = [startLangSelect.value, ...selectedLangCodes, endLangSelect.value];
 
             let currentTexts = Object.values(jsonResult);
             const keys = Object.keys(jsonResult);
