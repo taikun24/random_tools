@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft 逆翻訳ツール</title>
+    <style>
+        :root {
+            --primary-color: #3b8526;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #f4f4f4;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        main {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-color);
+            padding-left: 10px;
+        }
+
+        #drop-zone {
+            width: 100%;
+            height: 150px;
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #fafafa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        #drop-zone.dragover {
+            background-color: #e8f5e9;
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+
+        #drop-zone p {
+            margin: 5px 0;
+            color: #777;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 24px;
+        }
+
+        .status-success {
+            color: var(--primary-color);
+        }
+
+        .status-error {
+            color: var(--accent-color);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            flex-grow: 1;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2d6a1d;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background-color: #7f8c8d;
+        }
+
+        button.secondary:hover {
+            background-color: #626d6e;
+        }
+
+        button.danger {
+            background-color: var(--accent-color);
+        }
+
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+
+        #language-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            min-height: 50px;
+        }
+
+        .lang-badge {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .lang-badge .remove-lang {
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 5px;
+            color: #ffadad;
+        }
+
+        .lang-badge .remove-lang:hover {
+            color: #ff5252;
+        }
+
+        .arrow {
+            color: #777;
+            font-weight: bold;
+        }
+
+        #progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        progress {
+            width: 100%;
+            height: 20px;
+            border-radius: 10px;
+        }
+
+        #progress-status {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        #result-area {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 5px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js/dist/zip.min.js"></script>
+
+</head>
+
+<body>
+    <header>
+        <h1>Minecraft 逆翻訳ツール</h1>
+    </header>
+
+    <main>
+        <div class="section">
+            <h2>1. ファイルの準備</h2>
+            <p><a href="https://mcasset.cloud/latest/assets/minecraft/lang/ja_jp.json" target="_blank">MCAsset.cloud</a>
+                などから Minecraft の日本語翻訳ファイル (ja_jp.json) をダウンロードしてください。</p>
+        </div>
+
+        <div class="section">
+            <h2>2. ファイルの読み込み</h2>
+            <div id="drop-zone">
+                <p>ここに .json ファイルをドラッグ＆ドロップ</p>
+                <p>またはクリックしてファイルを選択</p>
+                <input type="file" id="file-input" accept=".json" style="display: none;">
+            </div>
+            <p id="status">ファイルが読み込まれていません。</p>
+        </div>
+
+        <div class="section">
+            <h2>3. 翻訳ルートの設定</h2>
+            <p>経由する言語を選択して追加してください。最後に自動的に日本語に戻ります。</p>
+            <div class="controls">
+                <select id="language-select">
+                    <option value="" disabled selected>言語を選択...</option>
+                </select>
+                <button id="add-language-button" class="secondary">追加</button>
+            </div>
+
+            <div id="language-flow">
+                <div class="lang-badge">日本語 (ja)</div>
+                <!-- 追加された言語がここに入ります -->
+                <div class="arrow" id="final-arrow">→</div>
+                <div class="lang-badge" id="final-lang">日本語 (ja)</div>
+            </div>
+            <p class="note">※ 言語を追加すると、日本語 → 選択言語1 → 選択言語2 ... → 日本語 の順に翻訳されます。</p>
+        </div>
+
+        <div class="section">
+            <h2>4. 実行</h2>
+            <details>
+                <summary>詳細設定</summary>
+                <input type="range" id="api-limit-range" min="1" max="500" value="100">
+                <label for="api-limit-range">API一括処理数 (現在: <span id="api-limit-value">100</span>)</label>
+                <p class="note">※ APIの制限により、一度に大量のテキストを翻訳しようとすると失敗する場合があります。値を小さくすると安定しますが、処理時間が長くなります。</p>
+                <input type="range" id="api-delay-range" min="0" max="2000" value="100">
+                <label for="api-delay-range">API呼び出し間の待機時間 (ms) (現在: <span id="api-delay-value">100</span>)</label>
+                <p class="note">※ API呼び出し間に待機時間を入れることで、連続リクエストによる制限を回避できます。値を大きくすると安定しますが、処理時間が長くなります。</p>
+            </details>
+            <p>
+                翻訳APIを選択してください。<br>
+		MyMeomry: 無料・制限あり<br>
+                Chrome翻訳API: Chromeのみ・翻訳数無制限（ただし対応言語が限られます）<br>
+            </p>
+            <select id="translation-api-select">
+                <option value="mymemory" selected>MyMemory 翻訳API</option>
+
+            </select>
+            <button id="do-translate-button" disabled>翻訳を開始</button>
+            <span id="error" style="color: red; margin-left: 10px;"></span>
+            <div id="progress-container">
+                <progress id="progress-bar" value="0" max="100"></progress>
+                <p id="progress-status">準備中...</p>
+            </div>
+
+            <div id="result-area">
+                <p class="status-success">翻訳が完了しました！</p>
+                <button id="download-button" class="secondary">結果をダウンロード (json)</button>
+                <button id="download-button-resourcepack">結果をリソースパック形式でダウンロード (zip)</button>
+
+            </div>
+        </div>
+        <div class="section">
+            <h2>5. リソースパックの導入</h2>
+            <p>
+                1. Minecraftを起動します。<br>
+                2. 設定→リソースパック→リソースパックフォルダーを開くをクリックします。<br>
+                3. zipファイルを開いたフォルダーにコピーします。<br>
+                4. 新しく追加されたリソースパックの右三角ボタン（▶）をクリックして有効化します。<br>
+                5. 「完了」をクリックします。<br>
+                6. 完了！ ワールドを開いて翻訳が反映されているか確認してください。
+            </p>
+        </div>
+    </main>
+
+    <script>
+        let errorCount = 0;
+        window.onerror = function (message, source, lineno, colno, error) {
+            errorCount++;
+            const errorElem = document.getElementById('error');
+            errorElem.textContent = `エラーが発生しました。回数: ${errorCount}`;
+        };
+        // 言語リスト
+        window.languages = [
+            ["アフリカーンス語", "af"], ["アルバニア語", "sq"], ["アムハラ語", "am"], ["アラビア語", "ar"],
+            ["アルメニア語", "hy"], ["アゼルバイジャン語", "az"], ["バスク語", "eu"], ["ベラルーシ語", "be"],
+            ["ベンガル語", "bn"], ["ボスニア語", "bs"], ["ブルガリア語", "bg"], ["ビルマ語", "my"],
+            ["カタルーニャ語", "ca"], ["中国語（簡体字）", "zh-CN"], ["中国語（繁体字）", "zh-TW"],
+            ["クロアチア語", "hr"], ["チェコ語", "cs"], ["デンマーク語", "da"], ["オランダ語", "nl"],
+            ["英語", "en"], ["エストニア語", "et"], ["フィリピン語", "fil"], ["フィンランド語", "fi"],
+            ["フランス語", "fr"], ["ガリシア語", "gl"], ["ジョージア語", "ka"], ["ドイツ語", "de"],
+            ["ギリシャ語", "el"], ["グジャラート語", "gu"], ["ヘブライ語", "he"], ["ヒンディー語", "hi"],
+            ["ハンガリー語", "hu"], ["アイスランド語", "is"], ["インドネシア語", "id"], ["アイルランド語", "ga"],
+            ["イタリア語", "it"], ["カンナダ語", "kn"], ["クメール語", "km"], ["韓国語", "ko"],
+            ["キルギス語", "ky"], ["ラオ語", "lo"], ["ラトビア語", "lv"], ["リトアニア語", "lt"],
+            ["ルクセンブルク語", "lb"], ["マケドニア語", "mk"], ["マレー語", "ms"], ["マラヤーラム語", "ml"],
+            ["マルタ語", "mt"], ["マラーティー語", "mr"], ["モンゴル語", "mn"], ["ネパール語", "ne"],
+            ["ノルウェー語", "no"], ["ペルシャ語", "fa"], ["ポーランド語", "pl"], ["ポルトガル語", "pt"],
+            ["パンジャブ語", "pa"], ["ルーマニア語", "ro"], ["ロシア語", "ru"], ["セルビア語", "sr"],
+            ["スロバキア語", "sk"], ["スロベニア語", "sl"], ["ソマリ語", "so"], ["スペイン語", "es"],
+            ["スワヒリ語", "sw"], ["スウェーデン語", "sv"], ["タガログ語", "tl"], ["タジク語", "tg"],
+            ["タミル語", "ta"], ["テルグ語", "te"], ["タイ語", "th"], ["トルコ語", "tr"],
+            ["ウクライナ語", "uk"], ["ウルドゥー語", "ur"], ["ウズベク語", "uz"], ["ベトナム語", "vi"],
+            ["ウェールズ語", "cy"], ["ズールー語", "zu"]
+        ];
+
+        let jsonResult = null;
+        let selectedLangCodes = [];
+        let API_LIMIT = 100; // チャンクサイズを少し減らして安全に
+        let API_DELAY = 100; // API呼び出し間の待機時間(ms)
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const status = document.getElementById('status');
+        const languageSelect = document.getElementById('language-select');
+        const addLanguageButton = document.getElementById('add-language-button');
+        const languageFlow = document.getElementById('language-flow');
+        const finalArrow = document.getElementById('final-arrow');
+        const finalLang = document.getElementById('final-lang');
+        const doTranslateButton = document.getElementById('do-translate-button');
+        const progressBar = document.getElementById('progress-bar');
+        const progressStatus = document.getElementById('progress-status');
+        const progressContainer = document.getElementById('progress-container');
+        const resultArea = document.getElementById('result-area');
+        const downloadButton = document.getElementById('download-button');
+        const downloadButtonResourcePack = document.getElementById('download-button-resourcepack');
+        const apiLimitRange = document.getElementById('api-limit-range');
+        const apiLimitValue = document.getElementById('api-limit-value');
+        // Chrome翻訳APIのサポート確認
+        if ('translation' in self || 'Translator' in self) {
+            console.log("Chrome翻訳APIが利用可能です。選択肢に追加します。");
+            const option = document.createElement('option');
+            option.value = 'chrome-translate-api';
+            option.textContent = 'Chrome翻訳API (β)';
+            document.getElementById('translation-api-select').appendChild(option);
+        }
+        // API一括処理数の設定
+        apiLimitRange.addEventListener('input', () => {
+            apiLimitValue.textContent = apiLimitRange.value;
+            API_LIMIT = parseInt(apiLimitRange.value, 10);
+        });
+        // API呼び出し間の待機時間の設定
+        const apiDelayRange = document.getElementById('api-delay-range');
+        const apiDelayValue = document.getElementById('api-delay-value');
+        apiDelayRange.addEventListener('input', () => {
+            apiDelayValue.textContent = apiDelayRange.value;
+            API_DELAY = parseInt(apiDelayRange.value, 10);
+        });
+
+        // 言語セレクトボックスの初期化
+        window.languages.forEach(([name, code]) => {
+            if (code === 'ja') return; // 日本語は除外（始点と終点なので）
+            const option = document.createElement('option');
+            option.value = code;
+            option.textContent = `${name} (${code})`;
+            languageSelect.appendChild(option);
+        });
+
+        // ファイル読み込み処理
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    jsonResult = JSON.parse(e.target.result);
+                    status.textContent = `${Object.keys(jsonResult).length} 個のデータを読み込みました。`;
+                    status.className = 'status-success';
+                    checkReady();
+                } catch (error) {
+                    status.textContent = 'エラー: 無効なJSONファイルです。';
+                    status.className = 'status-error';
+                    jsonResult = null;
+                    checkReady();
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // 言語追加処理
+        addLanguageButton.addEventListener('click', () => {
+            const code = languageSelect.value;
+            if (!code) return;
+
+            const langName = window.languages.find(l => l[1] === code)[0];
+            selectedLangCodes.push(code);
+
+            const arrow = document.createElement('div');
+            arrow.className = 'arrow';
+            arrow.textContent = '→';
+
+            const badge = document.createElement('div');
+            badge.className = 'lang-badge';
+            badge.innerHTML = `${langName} (${code}) <span class="remove-lang" onclick="removeLanguage(this, '${code}')">×</span>`;
+
+            languageFlow.insertBefore(arrow, finalArrow);
+            languageFlow.insertBefore(badge, finalArrow);
+
+            checkReady();
+        });
+
+        window.removeLanguage = (element, code) => {
+            // UIから削除 (badgeとその前のarrow)
+            const badge = element.parentElement;
+            const arrow = badge.previousElementSibling;
+            badge.remove();
+            arrow.remove();
+
+            // 配列から削除 (最初に見つかったものだけ削除)
+            const index = selectedLangCodes.indexOf(code);
+            if (index > -1) {
+                selectedLangCodes.splice(index, 1);
+            }
+            checkReady();
+        };
+
+        function checkReady() {
+            doTranslateButton.disabled = !(jsonResult && selectedLangCodes.length > 0);
+        }
+        async function callAPI(texts, fromLang, toLang) {
+            const apiType = document.getElementById('translation-api-select').value;
+            if (apiType === 'mymemory') {
+                return await callMyMemoryAPI(texts, fromLang, toLang);
+            } else if (apiType === 'gas-api') {
+                return await callGASAPI(texts, fromLang, toLang);
+            } else if (
+                apiType === 'chrome-translate-api') {
+                return await callChromeTranslateAPI(texts, fromLang, toLang);
+            } else {
+                alert('選択された翻訳APIはまだ利用できません。');
+                return null;
+            }
+        }
+        // 翻訳API呼び出し
+        async function callMyMemoryAPI(texts, fromLang, toLang) {
+            try {
+                // 配列を改行区切りの文字列に変換
+                const q = texts.join('\n');
+                const response = await fetch('https://api.mymemory.translated.net/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        q: q,
+                        langpair: `${fromLang}|${toLang}`,
+                    }),
+                });
+                return await response.json();
+            } catch (e) {
+                console.error("API Error", e);
+                return null;
+            }
+        }
+        async function callGASAPI(texts, fromLang, toLang) {
+            try {
+                const url = './proxy.php';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        texts: texts,
+                        source: fromLang,
+                        target: toLang,
+                    }),
+                });
+                return await response.json();
+            } catch (e) {
+                console.error("GAS API Error", e);
+                return null;
+            }
+        }
+        let cachedTranslators = {};
+        async function checkTranslatorAvailabilityBetween(fromLang, toLang) {
+            if ('translation' in self && 'canTranslate' in self.translation) {
+                return await self.translation.canTranslate({
+                    sourceLanguage: fromLang,
+                    targetLanguage: toLang,
+                });
+            } else if ('Translator' in self) {
+                return await Translator.availability({
+                    sourceLanguage: fromLang,
+                    targetLanguage: toLang,
+                });
+            }
+            return 'no';
+        }
+        async function callChromeTranslateAPI(texts, fromLang, toLang) {
+            // texts は配列として受け取る
+            try {
+                let translator;
+                const key = `${fromLang}-${toLang}`;
+
+                if (cachedTranslators[key]) {
+                    translator = cachedTranslators[key];
+                } else {
+                    // ここに来ることは通常ないはずだが、念のため
+                    // ただし、ここでcreateTranslatorを呼ぶとジェスチャーエラーになる可能性がある
+                    throw new Error('Translator not prepared');
+                }
+
+                const translatedResults = [];
+                // 配列の各要素を順番に翻訳
+                for (const text of texts) {
+                    // 空文字はスキップまたは空文字として返す
+                    if (!text.trim()) {
+                        translatedResults.push("");
+                        continue;
+                    }
+                    const result = await translator.translate(text);
+                    translatedResults.push(result);
+                }
+
+                // MyMemory APIと同じ形式で返す (改行区切りの文字列)
+                return { responseData: { translatedText: translatedResults.join('\n') } };
+
+            } catch (e) {
+                console.error("Chrome Translate API Error", e);
+                alert('Chrome翻訳APIのエラーが発生しました: ' + e.message);
+                return null;
+            }
+        }
+        // 翻訳実行
+        doTranslateButton.addEventListener('click', async () => {
+            if (!jsonResult || selectedLangCodes.length === 0) return;
+
+            // Chrome翻訳APIの場合の特別フロー
+            if (document.getElementById('translation-api-select').value === 'chrome-translate-api') {
+                await handleChromeTranslationStep();
+                return;
+            }
+
+            // 通常の翻訳フロー (MyMemory, GAS)
+            startTranslationProcess();
+        });
+
+        async function handleChromeTranslationStep() {
+            doTranslateButton.disabled = true;
+            addLanguageButton.disabled = true;
+            progressContainer.style.display = 'block';
+            resultArea.style.display = 'none';
+
+            const flow = ['ja', ...selectedLangCodes, 'ja'];
+            const totalSteps = flow.length - 1;
+            let allReady = true;
+
+            for (let step = 0; step < totalSteps; step++) {
+                const fromLang = flow[step];
+                const toLang = flow[step + 1];
+                const key = `${fromLang}-${toLang}`;
+
+                if (cachedTranslators[key]) continue; // 既に準備済み
+
+                // 未準備の翻訳機が見つかった
+                allReady = false;
+
+                // 可用性チェック
+                const availability = await checkTranslatorAvailabilityBetween(fromLang, toLang);
+                if (availability === 'no') {
+                    alert(`Chrome翻訳APIは ${fromLang} から ${toLang} への翻訳をサポートしていません。`);
+                    resetUI();
+                    return;
+                }
+
+                // ダウンロードが必要か判定
+                const needsDownload = availability === 'after-download' || availability === 'downloadable';
+
+                if (needsDownload) {
+                    progressStatus.textContent = `翻訳モデルをダウンロード中... (${fromLang} → ${toLang})`;
+                } else {
+                    progressStatus.textContent = `翻訳モデルを準備中... (${fromLang} → ${toLang})`;
+                }
+
+                try {
+                    const options = {
+                        sourceLanguage: fromLang,
+                        targetLanguage: toLang,
+                        monitor(monitor) {
+                            monitor.addEventListener("downloadprogress", (e) => {
+                                const percent = e.total ? (e.loaded / e.total) * 100 : 0;
+                                progressStatus.textContent = `翻訳モデルをダウンロード中... (${fromLang} → ${toLang}): ${percent.toFixed(1)}%`;
+                            });
+                        }
+                    };
+
+                    let translator;
+                    if ('translation' in self && 'createTranslator' in self.translation) {
+                        translator = await self.translation.createTranslator(options);
+                    } else if ('Translator' in self) {
+                        translator = await Translator.create(options);
+                    } else {
+                        throw new Error('Translator API not found');
+                    }
+
+                    cachedTranslators[key] = translator;
+
+                    // ダウンロードが発生した場合、ここで一旦処理を中断し、ユーザーに次のアクションを促す
+                    // (1回のクリックイベントで複数のダウンロードを行うとエラーになる可能性があるため)
+                    if (needsDownload) {
+                        progressStatus.textContent = `モデル (${fromLang} → ${toLang}) のダウンロードが完了しました。`;
+
+                        // まだ未準備のものがあるか確認
+                        const hasMore = await checkMoreTranslatorsNeeded(flow, step + 1);
+                        if (hasMore) {
+                            doTranslateButton.textContent = "次のモデルをダウンロード";
+                            doTranslateButton.disabled = false;
+                            // addLanguageButtonは無効のまま
+                            return; // ここで関数を抜ける
+                        }
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    alert(`翻訳モデルの準備に失敗しました (${fromLang} → ${toLang}): ${e.message}`);
+                    resetUI();
+                    return;
+                }
+            }
+
+            // 全て準備完了したら翻訳開始
+            if (allReady || (await checkMoreTranslatorsNeeded(flow, 0) === false)) {
+                doTranslateButton.textContent = "翻訳を開始"; // 文言を戻す
+                startTranslationProcess();
+            }
+        }
+
+        async function checkMoreTranslatorsNeeded(flow, startStep) {
+            const totalSteps = flow.length - 1;
+            for (let step = startStep; step < totalSteps; step++) {
+                const fromLang = flow[step];
+                const toLang = flow[step + 1];
+                const key = `${fromLang}-${toLang}`;
+                if (!cachedTranslators[key]) return true;
+            }
+            return false;
+        }
+
+        function resetUI() {
+            doTranslateButton.disabled = false;
+            addLanguageButton.disabled = false;
+            doTranslateButton.textContent = "翻訳を開始";
+            progressContainer.style.display = 'none';
+        }
+
+        async function startTranslationProcess() {
+            doTranslateButton.disabled = true;
+            addLanguageButton.disabled = true;
+            progressContainer.style.display = 'block';
+            resultArea.style.display = 'none';
+
+            // 翻訳フロー: ja -> lang1 -> lang2 ... -> ja
+            const flow = ['ja', ...selectedLangCodes, 'ja'];
+
+            let currentTexts = Object.values(jsonResult);
+            const keys = Object.keys(jsonResult);
+            const totalSteps = flow.length - 1;
+
+            for (let step = 0; step < totalSteps; step++) {
+                const fromLang = flow[step];
+                const toLang = flow[step + 1];
+                const stepName = `${fromLang} → ${toLang}`;
+
+                let translatedTexts = [];
+                const totalItems = currentTexts.length;
+
+                for (let i = 0; i < totalItems; i += API_LIMIT) {
+                    const chunk = currentTexts.slice(i, i + API_LIMIT);
+                    // const textToTranslate = chunk.join('\n'); // 削除: 配列のまま渡す
+
+                    // 進捗表示
+                    const percent = ((step * totalItems + i) / (totalSteps * totalItems)) * 100;
+                    progressBar.value = percent;
+                    progressStatus.textContent = `Step ${step + 1}/${totalSteps}: ${stepName} 翻訳中... (${i}/${totalItems})`;
+
+                    // API呼び出し (配列を渡す)
+                    const response = await callAPI(chunk, fromLang, toLang);
+
+                    // ウェイトを入れる
+                    await new Promise(r => setTimeout(r, API_DELAY));
+
+                    if (response && response.responseData && response.responseData.translatedText) {
+                        // 複数行の場合、APIは改行で結合して返してくるはずだが、
+                        // MyMemoryは入力の改行を維持する場合としない場合があるため注意が必要。
+                        // ここでは単純にsplitする。
+                        const translatedChunk = response.responseData.translatedText.split('\n');
+
+                        // チャンクサイズと戻り値のサイズが合わない場合の補正（簡易的）
+                        while (translatedChunk.length < chunk.length) {
+                            translatedChunk.push(""); // 足りない分は空文字で埋める
+                        }
+
+                        translatedTexts.push(...translatedChunk);
+                    } else {
+                        // エラー時は原文をそのまま使う
+                        translatedTexts.push(...chunk);
+                        console.warn(`Translation failed for chunk starting at ${i}`);
+                    }
+                }
+                currentTexts = translatedTexts;
+            }
+
+            // 最終結果の構築
+            const finalJson = {};
+            keys.forEach((key, index) => {
+                finalJson[key] = currentTexts[index] || "";
+            });
+
+            // 完了処理
+            progressBar.value = 100;
+            progressStatus.textContent = 'すべての翻訳が完了しました！';
+            resultArea.style.display = 'block';
+            doTranslateButton.disabled = false;
+            addLanguageButton.disabled = false;
+            doTranslateButton.textContent = "翻訳を開始"; // 文言を戻す
+
+            // ダウンロードボタンの設定
+            downloadButton.onclick = () => {
+                const blob = new Blob([JSON.stringify(finalJson, null, 4)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'ja_jp_reversed.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+            downloadButtonResourcePack.onclick = () => {
+                // zip.jsを使ってリソースパック形式でダウンロード
+                // | assets
+                // - | minecraft
+                //   - | lang
+                //     - ja_jp.json
+                // - pack.mcmeta
+                const zipWriter = new zip.ZipWriter(new zip.BlobWriter("application/zip"));
+                const packMcmeta = {
+                    "pack": {
+                        "min_format": 6,
+                        "max_format": 76.0,
+                        "description": "逆翻訳リソースパック"
+                    }
+                };
+                zipWriter.add("pack.mcmeta", new zip.TextReader(JSON.stringify(packMcmeta, null, 4)));
+                zipWriter.add("assets/minecraft/lang/ja_jp.json", new zip.TextReader(JSON.stringify(finalJson, null, 4)));
+                zipWriter.close().then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'reverse_translation_resource_pack.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            };
+        }
+    </script>
+</body>
+
+</html>
